@@ -22,7 +22,7 @@ export class DefectService {
 			order: { created_at: 'DESC' as any }, // ну тут я сортирую по дате создания, от новых к старым
 		})
 	}
-  // я добавили обработку ошибки, если дефект не найден
+	// я добавили обработку ошибки, если дефект не найден
 	async getById(id: string) {
 		const row = await this.repo.findOne({ where: { id } })
 		if (!row) throw NotFound('Defect not found')
@@ -51,5 +51,33 @@ export class DefectService {
 		})
 		await this.repo.insert(entity)
 		return { id: entity.id }
+	}
+	// частичное обновления дефекта
+	async update(
+		id: string,
+		patch: Partial<
+			Pick<
+				Defect,
+				| 'title'
+				| 'description'
+				| 'priority'
+				| 'assignee_id'
+				| 'due_date'
+				| 'stage_id'
+			>
+		>
+	) {
+		const res = await this.repo.update(
+			{ id },
+			{ ...patch, updated_at: new Date() }
+		)
+		if (res.affected === 0) throw NotFound('Defect not found')
+		return this.getById(id)
+	}
+	// удаление
+	async remove(id: string) {
+		const res = await this.repo.delete({ id })
+		if (res.affected === 0) throw NotFound('Defect not found')
+		return { ok: true }
 	}
 }

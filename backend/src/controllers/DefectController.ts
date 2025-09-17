@@ -14,7 +14,19 @@ const CreateSchema = z.object({
 })
 
 const IdSchema = z.object({ id: z.string().uuid() }); // схема для валидации UUID
-
+// нужен хотя бы один параметр для обновления
+const PatchSchema = z
+	.object({
+		title: z.string().min(1).max(120).optional(),
+		description: z.string().max(4000).nullable().optional(),
+		priority: z.enum(['low', 'med', 'high', 'critical']).optional(),
+		assignee_id: z.string().uuid().nullable().optional(),
+		due_date: z.string().date().nullable().optional(),
+		stage_id: z.string().uuid().nullable().optional(),
+	})
+	.refine(obj => Object.keys(obj).length > 0, {
+		message: 'At least one field required',
+	})
 // а это контроллер для обработки HTTP запросов, связанных с дефектами, да, вот так вот
 export class DefectController {
 	constructor(private readonly service: DefectService) {}
@@ -31,7 +43,7 @@ export class DefectController {
 			next(e)
 		}
 	}
-// метод для получения дефекта по id, йоу
+	// метод для получения дефекта по id, йоу
 	getById = async (req: Request, res: Response, next: NextFunction) => {
 		try {
 			const { id } = IdSchema.parse(req.params)
@@ -49,6 +61,27 @@ export class DefectController {
 			const result = await this.service.create(dto)
 
 			res.status(201).json(result)
+		} catch (e) {
+			next(e)
+		}
+	}
+	// метод для частичного обновления дефекта
+	update = async (req: Request, res: Response, next: NextFunction) => {
+		try {
+			const { id } = IdSchema.parse(req.params)
+			const patch = PatchSchema.parse(req.body)
+			const updated = await this.service.update(id, patch as any)
+			res.json(updated)
+		} catch (e) {
+			next(e)
+		}
+	}
+	// удаление дефекта по id
+	remove = async (req: Request, res: Response, next: NextFunction) => {
+		try {
+			const { id } = IdSchema.parse(req.params)
+			const out = await this.service.remove(id)
+			res.json(out)
 		} catch (e) {
 			next(e)
 		}

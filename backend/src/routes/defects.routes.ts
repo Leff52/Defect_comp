@@ -1,10 +1,19 @@
-import { Router } from 'express';
-import { AppDataSource } from '../config/data-source';
-import { Defect } from '../models/Defect';
-import { DefectService } from '../services/DefectService';
-import { DefectController } from '../controllers/DefectController';
-import { authMiddleware } from '../middlewares/authMiddleware';
-const r = Router(); const repo = AppDataSource.getRepository(Defect); const service = new DefectService(repo); const ctrl = new DefectController(service);
-r.get('/defects', authMiddleware, ctrl.list);
-r.post('/defects', authMiddleware, ctrl.create);
-export default r;
+import { Router } from 'express'
+import { AppDataSource } from '../config/data-source'
+import { Defect } from '../models/Defect'
+import { DefectService } from '../services/DefectService'
+import { DefectController } from '../controllers/DefectController'
+import { authMiddleware } from '../middlewares/authMiddleware'
+
+
+const r = Router()
+const repo = AppDataSource.getRepository(Defect)
+const service = new DefectService(repo)
+const ctrl = new DefectController(service)
+
+r.get('/defects', authMiddleware, ctrl.list) 
+r.get('/defects/:id', authMiddleware, ctrl.getById) 
+r.post('/defects', authMiddleware, ctrl.create)
+r.patch('/defects/:id', authMiddleware, ctrl.update)
+r.delete('/defects/:id', authMiddleware, ctrl.remove)
+export default r
