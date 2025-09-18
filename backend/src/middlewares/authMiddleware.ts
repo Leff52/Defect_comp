@@ -1,15 +1,20 @@
 import { NextFunction, Request, Response } from 'express'
-export type Role = 'Engineer' | 'Manager' | 'Lead' | 'Admin'
+import { AuthService } from '../services/AuthService'
+
 export function authMiddleware(
 	req: Request,
-	_res: Response,
+	res: Response,
 	next: NextFunction
 ) {
-	const hdr = String(req.header('X-Role') || 'Engineer') // x-role менеджер по умолчанию
-	// проверка, если нет то по умолчанию инженер
-	const role = (
-		['Engineer', 'Manager', 'Lead', 'Admin'].includes(hdr) ? hdr : 'Engineer'
-	) as Role
-	;(req as any).user = { id: 'demo-user', role }
-	next()
+	const header = req.header('Authorization')
+	if (!header?.startsWith('Bearer ')) {
+		return res.status(401).json({ error: 'Missing or invalid token' })
+	}
+	try {
+		const payload = AuthService.verify(header.substring(7)) 
+		;(req as any).user = payload
+		next()
+	} catch {
+		return res.status(401).json({ error: 'Invalid or expired token' })
+	}
 }
