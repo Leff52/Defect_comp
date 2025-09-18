@@ -16,4 +16,5 @@ r.get('/defects/:id', authMiddleware, ctrl.getById)
 r.post('/defects', authMiddleware, ctrl.create)
 r.patch('/defects/:id', authMiddleware, ctrl.update)
 r.delete('/defects/:id', authMiddleware, ctrl.remove)
+r.patch('/defects/:id/status', authMiddleware, ctrl.changeStatus)
 export default r

@@ -12,7 +12,10 @@ const CreateSchema = z.object({
 		.default('med')
 		.optional(),
 })
-
+// схема для валидации статуса дефекта
+const StatusSchema = z.object({
+	status: z.enum(['new', 'in_work', 'review', 'closed', 'canceled']),
+})
 const IdSchema = z.object({ id: z.string().uuid() }); // схема для валидации UUID
 // нужен хотя бы один параметр для обновления
 const PatchSchema = z
@@ -82,6 +85,18 @@ export class DefectController {
 			const { id } = IdSchema.parse(req.params)
 			const out = await this.service.remove(id)
 			res.json(out)
+		} catch (e) {
+			next(e)
+		}
+	}
+	// изменения статуса дефекта
+	changeStatus = async (req: Request, res: Response, next: NextFunction) => {
+		try {
+			const { id } = IdSchema.parse(req.params)
+			const { status } = StatusSchema.parse(req.body)
+			const role = (req as any).user?.role ?? 'Engineer'
+			const updated = await this.service.changeStatus(id, status, role)
+			res.json(updated)
 		} catch (e) {
 			next(e)
 		}

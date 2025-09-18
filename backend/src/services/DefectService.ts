@@ -1,7 +1,8 @@
 import { Repository } from 'typeorm';
 import { Defect } from '../models/Defect';
 import crypto from 'crypto';
-import { NotFound } from '../utils/httpError'
+import { NotFound, Forbidden } from '../utils/httpError'
+import type { Role } from '../middlewares/authMiddleware'
 
 // здесь я определяю интерфейс для входных данных при создании дефекта
 interface CreateDefectInput {
@@ -9,6 +10,20 @@ interface CreateDefectInput {
   project_id: string;
   description?: string | null;
   priority?: 'low' | 'med' | 'high' | 'critical';
+}
+const transitions: Record<string, string[]> = {
+	new: ['in_work'],
+	in_work: ['review'],
+	review: ['closed', 'canceled'],
+	closed: [],
+	canceled: [],
+};
+
+const statusByRole: Record<Role, string[]> = {
+	Engineer: ['in_work', 'review'],
+	Manager: ['in_work', 'review', 'closed', 'canceled'],
+	Lead: ['in_work', 'review', 'closed', 'canceled'],
+	Admin: ['in_work', 'review', 'closed', 'canceled'],
 }
 
 // а это сервис для работы с дефектами, бизнес-логика вся тут, туси туси на тусе
@@ -79,5 +94,32 @@ export class DefectService {
 		const res = await this.repo.delete({ id })
 		if (res.affected === 0) throw NotFound('Defect not found')
 		return { ok: true }
+	}
+
+	// смена статуса с проверкой валидности перехода
+	async changeStatus(
+		id: string,
+		newStatus: 'new' | 'in_work' | 'review' | 'closed' | 'canceled',
+		userRole: Role
+	) {
+		const defect = await this.repo.findOne({ where: { id } })
+		if (!defect) throw NotFound('Defect not found')
+
+		// проверка возможного перехода
+		const allowedNext = transitions[defect.status] || []
+		if (!allowedNext.includes(newStatus)) {
+			throw Forbidden(`Invalid transition: ${defect.status} → ${newStatus}`)
+		}
+
+		// проверка роли на целевой статус
+		const roleAllowed = statusByRole[userRole] || []
+		if (!roleAllowed.includes(newStatus)) {
+			throw Forbidden(`Role ${userRole} cannot set status to ${newStatus}`)
+		}
+
+		defect.status = newStatus
+		defect.updated_at = new Date()
+		await this.repo.save(defect)
+		return defect
 	}
 }
