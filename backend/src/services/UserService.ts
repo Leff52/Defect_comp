@@ -21,4 +21,7 @@ export class UserService {
 		const rs = await this.roles.findBy({ id: In(roleIds) })
 		return rs.map(r => r.name)
 	}
+	async getById(userId: string) {
+		return this.users.findOne({ where: { id: userId } })
+	}
 }

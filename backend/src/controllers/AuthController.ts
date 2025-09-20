@@ -38,4 +38,25 @@ export class AuthController {
 			next(e)
 		}
 	}
+	me = async (req: Request, res: Response, next: NextFunction) => {
+		try {
+			const auth = (req as any).user as
+				| { id: string; roles: string[] }
+				| undefined
+			if (!auth?.id) return res.status(401).json({ error: 'Unauthorized' })
+
+			const user = await this.users.getById(auth.id)
+			if (!user) return res.status(404).json({ error: 'User not found' })
+
+			const roles = await this.users.getRolesForUser(user.id)
+			res.json({
+				id: user.id,
+				email: user.email,
+				full_name: user.full_name,
+				roles,
+			})
+		} catch (e) {
+			next(e)
+		}
+	}
 }
