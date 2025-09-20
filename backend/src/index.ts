@@ -6,6 +6,9 @@ import { errorHandler } from './middlewares/errorHandler';
 import health from './routes/health.routes'; 
 import defects from './routes/defects.routes';
 import auth from './routes/auth.routes'
+import projects from './routes/projects.routes'
+import stages from './routes/stages.routes'
+import comments from './routes/comments.routes'
 
 const app = express(); 
 
@@ -20,4 +23,7 @@ AppDataSource.initialize().then(() => { app.listen(config.port, () =>
             process.exit(1);
         });
 app.use('/api', auth)
-app.use(errorHandler)
+app.use('/api', projects)
+app.use('/api', stages)
+app.use('/api', comments)
+app.use(errorHandler)   

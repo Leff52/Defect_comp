@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { DefectService } from '../services/DefectService';
+import { getPage } from '../utils/pagination'
 
 // снизу это схема для валидации запросов на создание дефекта, вау
 const CreateSchema = z.object({
@@ -30,18 +31,28 @@ const PatchSchema = z
 	.refine(obj => Object.keys(obj).length > 0, {
 		message: 'At least one field required',
 	})
+const ListQuery = z.object({
+	status: z.enum(['new', 'in_work', 'review', 'closed', 'canceled']).optional(),
+	priority: z.enum(['low', 'med', 'high', 'critical']).optional(),
+	projectId: z.string().uuid().optional(),
+	assigneeId: z.string().uuid().optional(),
+	q: z.string().min(1).optional(),
+	sort: z
+		.enum(['created_at:asc', 'created_at:desc', 'due_date:asc', 'due_date:desc'])
+		.optional(),
+})
+
+
 // а это контроллер для обработки HTTP запросов, связанных с дефектами, да, вот так вот
 export class DefectController {
 	constructor(private readonly service: DefectService) {}
 
 	list = async (req: Request, res: Response, next: NextFunction) => {
-		// ну и здесь я обрабатываю запрос на получение списка дефектов, с пагинацией
 		try {
-			const limit = parseInt(String(req.query.limit || '20'), 10) // в конце 10 это основание системы счисления, для того чтобы не забыть пишу
-			const offset = parseInt(String(req.query.offset || '0'), 10)
-
-			const data = await this.service.list(limit, offset)
-			res.json(data)
+			const q = ListQuery.parse(req.query)
+			const page = getPage(req)
+			const out = await this.service.listAdvanced({ ...page, ...q })
+			res.json(out)
 		} catch (e) {
 			next(e)
 		}

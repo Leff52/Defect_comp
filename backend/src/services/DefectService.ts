@@ -1,15 +1,14 @@
-import { Repository } from 'typeorm';
-import { Defect } from '../models/Defect';
-import crypto from 'crypto';
+import { Repository, ILike, SelectQueryBuilder } from 'typeorm'
+import { Defect } from '../models/Defect'
+import crypto from 'crypto'
 import { NotFound, Forbidden } from '../utils/httpError'
-
 
 // здесь я определяю интерфейс для входных данных при создании дефекта
 interface CreateDefectInput {
-  title: string;
-  project_id: string;
-  description?: string | null;
-  priority?: 'low' | 'med' | 'high' | 'critical';
+	title: string
+	project_id: string
+	description?: string | null
+	priority?: 'low' | 'med' | 'high' | 'critical'
 }
 const transitions: Record<string, string[]> = {
 	new: ['in_work'],
@@ -17,7 +16,7 @@ const transitions: Record<string, string[]> = {
 	review: ['closed', 'canceled'],
 	closed: [],
 	canceled: [],
-};
+}
 
 const statusByRole = {
 	Engineer: ['in_work', 'review'],
@@ -121,5 +120,41 @@ export class DefectService {
 		defect.updated_at = new Date()
 		await this.repo.save(defect)
 		return defect
+	}
+	async listAdvanced(params: {
+		limit: number
+		offset: number
+		status?: 'new' | 'in_work' | 'review' | 'closed' | 'canceled'
+		priority?: 'low' | 'med' | 'high' | 'critical'
+		projectId?: string
+		assigneeId?: string
+		q?: string
+		sort?: `${'created_at' | 'due_date'}:${'asc' | 'desc'}`
+	}) {
+		const qb: SelectQueryBuilder<Defect> = this.repo.createQueryBuilder('d')
+		qb.orderBy('d.created_at', 'DESC').limit(params.limit).offset(params.offset)
+
+		if (params.status)
+			qb.andWhere('d.status = :status', { status: params.status })
+		if (params.priority)
+			qb.andWhere('d.priority = :priority', { priority: params.priority })
+		if (params.projectId)
+			qb.andWhere('d.project_id = :pid', { pid: params.projectId })
+		if (params.assigneeId)
+			qb.andWhere('d.assignee_id = :aid', { aid: params.assigneeId })
+		if (params.q)
+			qb.andWhere('(d.title ILIKE :q OR d.description ILIKE :q)', {
+				q: `%${params.q}%`,
+			})
+		if (params.sort) {
+			const [field, dir] = params.sort.split(':') as [
+				'created_at' | 'due_date',
+				'asc' | 'desc'
+			]
+			qb.orderBy(`d.${field}`, dir.toUpperCase() as 'ASC' | 'DESC')
+		}
+
+		const [items, total] = await qb.getManyAndCount()
+		return { items, total }
 	}
 }
