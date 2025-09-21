@@ -11,6 +11,7 @@ import projects from './routes/projects.routes'
 import stages from './routes/stages.routes'
 import comments from './routes/comments.routes'
 import attachments from './routes/attachments.routes'
+import { setupSwagger } from './config/swagger'
 
 const app = express(); 
 
@@ -34,3 +35,4 @@ app.use(
 )
 app.use('/api', attachments)
 app.use(errorHandler)   
+setupSwagger(app);
