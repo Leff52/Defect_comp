@@ -1,15 +1,17 @@
-import { Repository, ILike, SelectQueryBuilder } from 'typeorm'
+import { Repository, SelectQueryBuilder } from 'typeorm'
 import { Defect } from '../models/Defect'
 import crypto from 'crypto'
 import { NotFound, Forbidden } from '../utils/httpError'
 
-// здесь я определяю интерфейс для входных данных при создании дефекта
+// входные данные при создании дефекта
 interface CreateDefectInput {
 	title: string
 	project_id: string
 	description?: string | null
 	priority?: 'low' | 'med' | 'high' | 'critical'
 }
+
+// матрица переходов по статусам
 const transitions: Record<string, string[]> = {
 	new: ['in_work'],
 	in_work: ['review'],
@@ -18,6 +20,7 @@ const transitions: Record<string, string[]> = {
 	canceled: [],
 }
 
+// разрешения статусов по ролям
 const statusByRole = {
 	Engineer: ['in_work', 'review'],
 	Manager: ['in_work', 'review', 'closed', 'canceled'],
@@ -28,7 +31,7 @@ const statusByRole = {
 function canSetStatus(userRoles: string[], target: string) {
 	return userRoles.some(r => (statusByRole as any)[r]?.includes(target))
 }
-// а это сервис для работы с дефектами, бизнес-логика вся тут, туси туси на тусе
+
 export class DefectService {
 	constructor(private readonly repo: Repository<Defect>) {}
 
@@ -36,22 +39,17 @@ export class DefectService {
 		return this.repo.find({
 			take: limit,
 			skip: offset,
-			order: { created_at: 'DESC' as any }, // ну тут я сортирую по дате создания, от новых к старым
+			order: { created_at: 'DESC' as any },
 		})
 	}
-	// я добавили обработку ошибки, если дефект не найден
+
 	async getById(id: string) {
 		const row = await this.repo.findOne({ where: { id } })
 		if (!row) throw NotFound('Defect not found')
 		return row
 	}
-	// здеся метод для создания нового дефекта
-	async create(input: {
-		title: string
-		project_id: string
-		description?: string | null
-		priority?: 'low' | 'med' | 'high' | 'critical'
-	}) {
+
+	async create(input: CreateDefectInput) {
 		if (!input.title?.trim()) throw new Error('Title is required')
 		const entity = this.repo.create({
 			id: crypto.randomUUID(),
@@ -69,7 +67,7 @@ export class DefectService {
 		await this.repo.insert(entity)
 		return { id: entity.id }
 	}
-	// частичное обновления дефекта
+
 	async update(
 		id: string,
 		patch: Partial<
@@ -91,14 +89,13 @@ export class DefectService {
 		if (res.affected === 0) throw NotFound('Defect not found')
 		return this.getById(id)
 	}
-	// удаление
+
 	async remove(id: string) {
 		const res = await this.repo.delete({ id })
 		if (res.affected === 0) throw NotFound('Defect not found')
 		return { ok: true }
 	}
 
-	// смена статуса с проверкой валидности перехода
 	async changeStatus(
 		id: string,
 		newStatus: 'new' | 'in_work' | 'review' | 'closed' | 'canceled',
@@ -111,7 +108,6 @@ export class DefectService {
 		if (!allowedNext.includes(newStatus)) {
 			throw Forbidden(`Invalid transition: ${defect.status} → ${newStatus}`)
 		}
-
 		if (!canSetStatus(userRoles, newStatus)) {
 			throw Forbidden(`Insufficient role to set status to ${newStatus}`)
 		}
@@ -121,9 +117,8 @@ export class DefectService {
 		await this.repo.save(defect)
 		return defect
 	}
-	async listAdvanced(params: {
-		limit: number
-		offset: number
+
+	private buildQb(params: {
 		status?: 'new' | 'in_work' | 'review' | 'closed' | 'canceled'
 		priority?: 'low' | 'med' | 'high' | 'critical'
 		projectId?: string
@@ -132,7 +127,6 @@ export class DefectService {
 		sort?: `${'created_at' | 'due_date'}:${'asc' | 'desc'}`
 	}) {
 		const qb: SelectQueryBuilder<Defect> = this.repo.createQueryBuilder('d')
-		qb.orderBy('d.created_at', 'DESC').limit(params.limit).offset(params.offset)
 
 		if (params.status)
 			qb.andWhere('d.status = :status', { status: params.status })
@@ -146,15 +140,42 @@ export class DefectService {
 			qb.andWhere('(d.title ILIKE :q OR d.description ILIKE :q)', {
 				q: `%${params.q}%`,
 			})
-		if (params.sort) {
-			const [field, dir] = params.sort.split(':') as [
-				'created_at' | 'due_date',
-				'asc' | 'desc'
-			]
-			qb.orderBy(`d.${field}`, dir.toUpperCase() as 'ASC' | 'DESC')
-		}
 
+		const [field, dir] = (params.sort ?? 'created_at:desc').split(':') as [
+			'created_at' | 'due_date',
+			'asc' | 'desc'
+		]
+		qb.orderBy(`d.${field}`, dir.toUpperCase() as 'ASC' | 'DESC')
+
+		return qb
+	}
+
+	// пагинированный список
+	async listAdvanced(params: {
+		limit: number
+		offset: number
+		status?: 'new' | 'in_work' | 'review' | 'closed' | 'canceled'
+		priority?: 'low' | 'med' | 'high' | 'critical'
+		projectId?: string
+		assigneeId?: string
+		q?: string
+		sort?: `${'created_at' | 'due_date'}:${'asc' | 'desc'}`
+	}) {
+		const qb = this.buildQb(params).limit(params.limit).offset(params.offset)
 		const [items, total] = await qb.getManyAndCount()
 		return { items, total }
+	}
+
+	// экспорт
+	async exportAdvanced(params: {
+		status?: 'new' | 'in_work' | 'review' | 'closed' | 'canceled'
+		priority?: 'low' | 'med' | 'high' | 'critical'
+		projectId?: string
+		assigneeId?: string
+		q?: string
+		sort?: `${'created_at' | 'due_date'}:${'asc' | 'desc'}`
+	}) {
+		const qb = this.buildQb(params)
+		return await qb.getMany()
 	}
 }
