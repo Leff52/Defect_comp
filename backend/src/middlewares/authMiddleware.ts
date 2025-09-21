@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from 'express'
 import { AuthService } from '../services/AuthService'
 
+
 export function authMiddleware(
 	req: Request,
 	res: Response,
@@ -11,8 +12,8 @@ export function authMiddleware(
 		return res.status(401).json({ error: 'Missing or invalid token' })
 	}
 	try {
-		const payload = AuthService.verify(header.substring(7)) 
-		;(req as any).user = payload
+		const payload = AuthService.verify(header.substring(7))
+		req.user = payload as any
 		next()
 	} catch {
 		return res.status(401).json({ error: 'Invalid or expired token' })

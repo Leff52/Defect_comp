@@ -6,7 +6,11 @@ import { NotFound } from '../utils/httpError'
 
 export class CommentService {
 	private repo: Repository<Comment> = AppDataSource.getRepository(Comment)
-
+	async getById(id: string) {
+		const row = await this.repo.findOne({ where: { id } })
+		if (!row) throw NotFound('Comment not found')
+		return row
+	}
 	async list(
 		defectId: string,
 		{ limit, offset }: { limit: number; offset: number }

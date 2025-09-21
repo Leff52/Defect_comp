@@ -1,5 +1,6 @@
 import express from 'express'; 
 import cors from 'cors';
+import path from 'path'
 import { config } from './config/config'; 
 import { AppDataSource } from './config/data-source';
 import { errorHandler } from './middlewares/errorHandler'; 
@@ -9,6 +10,7 @@ import auth from './routes/auth.routes'
 import projects from './routes/projects.routes'
 import stages from './routes/stages.routes'
 import comments from './routes/comments.routes'
+import attachments from './routes/attachments.routes'
 
 const app = express(); 
 
@@ -26,4 +28,9 @@ app.use('/api', auth)
 app.use('/api', projects)
 app.use('/api', stages)
 app.use('/api', comments)
+app.use(
+	'/files',
+	express.static(path.resolve(process.env.UPLOAD_DIR || 'uploads'))
+)
+app.use('/api', attachments)
 app.use(errorHandler)   

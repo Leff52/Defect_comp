@@ -3,16 +3,16 @@ import { z } from 'zod'
 import { CommentService } from '../services/CommentService'
 import { getPage } from '../utils/pagination'
 
-const IdParam = z.object({ id: z.string().uuid() })
-const DefectParam = z.object({ id: z.string().uuid() })
-const CreateBody = z.object({ text: z.string().min(1).max(4000) })
+const ParamDefect = z.object({ id: z.string().uuid() })
+const ParamId = z.object({ id: z.string().uuid() })
+const BodyCreate = z.object({ text: z.string().min(1).max(4000) })
 
 export class CommentController {
 	constructor(private readonly service: CommentService) {}
 
 	listByDefect = async (req: Request, res: Response, next: NextFunction) => {
 		try {
-			const { id } = DefectParam.parse(req.params)
+			const { id } = ParamDefect.parse(req.params)
 			const page = getPage(req)
 			res.json(await this.service.list(id, page))
 		} catch (e) {
@@ -22,19 +22,31 @@ export class CommentController {
 
 	createForDefect = async (req: Request, res: Response, next: NextFunction) => {
 		try {
-			const { id } = DefectParam.parse(req.params)
-			const { text } = CreateBody.parse(req.body)
-			const authorId = (req as any).user?.id as string
-			const out = await this.service.create(id, authorId, text)
+			const { id } = ParamDefect.parse(req.params)
+			const { text } = BodyCreate.parse(req.body)
+			const userId = (req as any).user?.id as string | undefined
+			if (!userId) return res.status(401).json({ error: 'Unauthorized' })
+			const out = await this.service.create(id, userId, text)
 			res.status(201).json(out)
 		} catch (e) {
 			next(e)
 		}
 	}
-
 	remove = async (req: Request, res: Response, next: NextFunction) => {
 		try {
-			const { id } = IdParam.parse(req.params)
+			const { id } = ParamId.parse(req.params)
+			const user = (req as any).user as
+				| { id: string; roles: string[] }
+				| undefined
+			if (!user?.id) return res.status(401).json({ error: 'Unauthorized' })
+
+			const row = await this.service.getById(id)
+			const canModerate = user.roles?.some(r =>
+				['Manager', 'Lead', 'Admin'].includes(r)
+			)
+			if (row.author_id !== user.id && !canModerate) {
+				return res.status(403).json({ error: 'Forbidden' })
+			}
 			res.json(await this.service.remove(id))
 		} catch (e) {
 			next(e)
