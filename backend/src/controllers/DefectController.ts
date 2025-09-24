@@ -51,8 +51,7 @@ const ExportQuery = z.object({
 	assigneeId: z.string().uuid().optional(),
 	q: z.string().min(1).optional(),
 	sort: z
-		.string()
-		.regex(/^(created_at|due_date):(asc|desc)$/)
+		.enum(['created_at:asc', 'created_at:desc', 'due_date:asc', 'due_date:desc'])
 		.optional(),
 })
 
