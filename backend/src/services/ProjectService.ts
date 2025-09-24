@@ -21,6 +21,9 @@ export class ProjectService {
 			take: limit,
 			skip: offset,
 		})
-		return { items, total }
+		return this.repo.find({
+			select: ['id', 'name'],
+			order: { name: 'ASC' as any },
+		})
 	}
 }

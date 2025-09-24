@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '@/store/auth'
 import { api, apiBlob } from '@/lib/api'
 import AuthGuard from '@/components/AuthGuard'
+import { CreateDefectDialog } from '@/components/CreateDefectDialog'
+
 type Defect = {
 	id: string
 	title: string
@@ -28,9 +30,11 @@ export default function DefectsPage() {
         <AuthGuard>
 			<DefectsPage />
 		</AuthGuard>
-	const { token } = useAuth()
+ 	 const { token } = useAuth()
 	const [rows, setRows] = useState<Defect[]>([])
 	const [total, setTotal] = useState(0)
+
+	const [openCreate, setOpenCreate] = useState(false)
 
 	// фильтры
 	const [q, setQ] = useState('')
@@ -78,7 +82,6 @@ export default function DefectsPage() {
 	}
 
 	return (
-        
 		<div className='space-y-4'>
 			<div className='flex flex-wrap gap-3 items-end justify-between'>
 				<h1 className='text-xl font-semibold'>Дефекты</h1>
@@ -124,6 +127,26 @@ export default function DefectsPage() {
 							</option>
 						))}
 					</select>
+
+					<button
+						onClick={() => setOpenCreate(true)}
+						className='px-3 py-1 bg-emerald-600 text-white rounded text-sm'
+					>
+						Создать
+					</button>
+					<button
+						onClick={() => download('csv')}
+						className='px-3 py-1 bg-slate-900 text-white rounded text-sm'
+					>
+						CSV
+					</button>
+					<button
+						onClick={() => download('xlsx')}
+						className='px-3 py-1 bg-slate-900 text-white rounded text-sm'
+					>
+						Excel
+					</button>
+
 					<button
 						onClick={() => download('csv')}
 						className='px-3 py-1 bg-slate-900 text-white rounded text-sm'
@@ -180,6 +203,25 @@ export default function DefectsPage() {
 				</table>
 			</div>
 			<div className='text-xs text-slate-500'>Всего: {total}</div>
+			<CreateDefectDialog
+				open={openCreate}
+				onClose={() => setOpenCreate(false)}
+				onCreated={() => {
+					// перезагрузить список после создания
+					if (!token) return
+					api<{ items: Defect[]; total: number }>(
+						`/api/defects?${query}`,
+						'GET',
+						undefined,
+						token
+					)
+						.then(d => {
+							setRows(d.items)
+							setTotal(d.total)
+						})
+						.catch(console.error)
+				}}
+			/>
 		</div>
 	)
 }

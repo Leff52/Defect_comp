@@ -11,8 +11,8 @@ export class ProjectController {
 		try {
 			const { q } = QuerySchema.parse(req.query)
 			const page = getPage(req)
-			const out = await this.service.list({ ...page, q: q ?? null })
-			res.json(out)
+			const items = await this.service.list({ ...page, q: q ?? null })
+			res.json(items)
 		} catch (e) {
 			next(e)
 		}
