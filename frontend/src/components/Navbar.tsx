@@ -1,11 +1,14 @@
 // frontend/src/components/Navbar.tsx
 'use client'
-
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/store/auth'
 
 export function Navbar() {
-	const { user, logout } = useAuth()
+	const { user, logout, hydrate } = useAuth()
+	useEffect(() => {
+		hydrate()
+	}, [hydrate])
 
 	return (
 		<header className='border-b bg-white sticky top-0 z-40'>

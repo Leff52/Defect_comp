@@ -14,16 +14,23 @@ export class AuthController {
 
 	login = async (req: Request, res: Response, next: NextFunction) => {
 		try {
-			const { email, password } = LoginSchema.parse(req.body)
+			const { email, password } = LoginSchema.parse(req.body);
 
-			const user = await this.users.findByEmail(email)
-			if (!user) return res.status(401).json({ error: 'Invalid credentials' })
+			const user = await this.users.findByEmail(email);
+			if (!user) return res.status(401).json({ error: 'Invalid credentials' });
 
-			const ok = await argon2.verify(user.password_hash, password)
-			if (!ok) return res.status(401).json({ error: 'Invalid credentials' })
+			const ok = await argon2.verify(user.password_hash, password);
+			if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
 
-			const roles = await this.users.getRolesForUser(user.id)
-			const token = AuthService.sign({ id: user.id, roles })
+			const userRoles = await this.users.getRolesForUser(user.id);
+			
+			// Создаем payload с гарантированным массивом ролей
+			const payload = { 
+				id: user.id, 
+				roles: Array.isArray(userRoles) ? userRoles : [userRoles].filter(Boolean) 
+			};
+			
+			const token = AuthService.sign(payload);
 
 			res.json({
 				token,
@@ -31,32 +38,36 @@ export class AuthController {
 					id: user.id,
 					email: user.email,
 					full_name: user.full_name,
-					roles,
+					roles: payload.roles,
 				},
-			})
+			});
 		} catch (e) {
-			next(e)
+			next(e);
 		}
-	}
+	};
 	me = async (req: Request, res: Response, next: NextFunction) => {
 		try {
 			const auth = (req as any).user as
 				| { id: string; roles: string[] }
-				| undefined
-			if (!auth?.id) return res.status(401).json({ error: 'Unauthorized' })
+				| undefined;
+			if (!auth?.id) return res.status(401).json({ error: 'Unauthorized' });
 
-			const user = await this.users.getById(auth.id)
-			if (!user) return res.status(404).json({ error: 'User not found' })
+			const user = await this.users.getById(auth.id);
+			if (!user) return res.status(404).json({ error: 'User not found' });
 
-			const roles = await this.users.getRolesForUser(user.id)
+			const userRoles = await this.users.getRolesForUser(user.id);
+			
+			// Обеспечиваем, что roles всегда массив
+			const roles = Array.isArray(userRoles) ? userRoles : [userRoles].filter(Boolean);
+
 			res.json({
 				id: user.id,
 				email: user.email,
 				full_name: user.full_name,
 				roles,
-			})
+			});
 		} catch (e) {
-			next(e)
+			next(e);
 		}
-	}
+	};
 }

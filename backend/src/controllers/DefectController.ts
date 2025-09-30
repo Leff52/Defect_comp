@@ -115,15 +115,19 @@ export class DefectController {
 	// изменения статуса дефекта
 	changeStatus = async (req: Request, res: Response, next: NextFunction) => {
 		try {
-			const { id } = IdSchema.parse(req.params)
-			const { status } = StatusSchema.parse(req.body)
-			const role = (req as any).user?.role ?? 'Engineer'
-			const updated = await this.service.changeStatus(id, status, role)
-			res.json(updated)
+			const { id } = IdSchema.parse(req.params);
+			const { status } = StatusSchema.parse(req.body);
+			const userRoles = (req as any).user?.roles ?? [];
+			
+			// Обеспечиваем что roles всегда массив
+			const roles = Array.isArray(userRoles) ? userRoles : [userRoles].filter(Boolean);
+			
+			await this.service.changeStatus(id, status, roles);
+			res.json({ success: true });
 		} catch (e) {
-			next(e)
+			next(e);
 		}
-	}
+	};
 	exportCsv = async (req: Request, res: Response, next: NextFunction) => {
 		try {
 			const q = ExportQuery.parse(req.query)

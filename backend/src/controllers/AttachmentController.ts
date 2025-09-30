@@ -44,17 +44,20 @@ export class AttachmentController {
 
 	remove = async (req: Request, res: Response, next: NextFunction) => {
 		try {
-			const { id } = ParamId.parse(req.params)
-			const user = req.user
-			if (!user) return res.status(401).json({ error: 'Unauthorized' })
+			const { id } = ParamId.parse(req.params);
+			const user = req.user;
+			if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-			const row = await this.service.getById(id)
-			const canModerate =
-				user.roles?.some(r => ['Manager', 'Lead', 'Admin'].includes(r)) ?? false
+			const row = await this.service.getById(id);
+			
+			// Обеспечиваем что roles всегда массив
+			const userRoles = Array.isArray(user.roles) ? user.roles : [user.roles].filter(Boolean);
+			const canModerate = userRoles.some(r => ['Manager', 'Lead', 'Admin'].includes(r));
+			
 			if (row.author_id !== user.id && !canModerate) {
-				return res.status(403).json({ error: 'Forbidden' })
+				return res.status(403).json({ error: 'Forbidden' });
 			}
-			res.json(await this.service.remove(id))
+			res.json(await this.service.remove(id));
 		} catch (e) {
 			next(e)
 		}

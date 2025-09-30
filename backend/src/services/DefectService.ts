@@ -1,14 +1,18 @@
-import { Repository, SelectQueryBuilder } from 'typeorm'
-import { Defect } from '../models/Defect'
-import crypto from 'crypto'
-import { NotFound, Forbidden } from '../utils/httpError'
+import { Repository, SelectQueryBuilder } from 'typeorm';
+import { Defect } from '../models/Defect';
+import crypto from 'crypto';
+import { NotFound, Forbidden } from '../utils/httpError';
+
+// Типы для статуса и приоритета
+type Status = 'new' | 'in_work' | 'review' | 'closed' | 'canceled';
+type Priority = 'low' | 'med' | 'high' | 'critical';
 
 // входные данные при создании дефекта
 interface CreateDefectInput {
-	title: string
-	project_id: string
-	description?: string | null
-	priority?: 'low' | 'med' | 'high' | 'critical'
+	title: string;
+	project_id: string;
+	description?: string | null;
+	priority?: Priority;
 }
 
 // матрица переходов по статусам
@@ -26,11 +30,7 @@ const statusByRole = {
 	Manager: ['in_work', 'review', 'closed', 'canceled'],
 	Lead: ['in_work', 'review', 'closed', 'canceled'],
 	Admin: ['in_work', 'review', 'closed', 'canceled'],
-} as const
-
-function canSetStatus(userRoles: string[], target: string) {
-	return userRoles.some(r => (statusByRole as any)[r]?.includes(target))
-}
+} as const;
 
 export class DefectService {
 	constructor(private readonly repo: Repository<Defect>) {}
@@ -95,36 +95,41 @@ export class DefectService {
 		if (res.affected === 0) throw NotFound('Defect not found')
 		return { ok: true }
 	}
-
+	
 	async changeStatus(
 		id: string,
-		newStatus: 'new' | 'in_work' | 'review' | 'closed' | 'canceled',
-		userRoles: string[]
+		newStatus: Status,
+		userRoles: string[] | string
 	) {
-		const defect = await this.repo.findOne({ where: { id } })
-		if (!defect) throw NotFound('Defect not found')
+		// Нормализуем роли в массив как в AuthController
+		const roles = Array.isArray(userRoles) ? userRoles : [userRoles].filter(Boolean);
+		const allowed = ['Admin', 'Manager'];
+		
+		if (!roles.some(r => allowed.includes(r))) {
+			throw Forbidden('Only Admin/Manager can change status');
+		}
 
-		const allowedNext = transitions[defect.status] || []
+		const defect = await this.repo.findOne({ where: { id } });
+		if (!defect) throw NotFound('Defect not found');
+
+		const allowedNext = transitions[defect.status] || [];
 		if (!allowedNext.includes(newStatus)) {
-			throw Forbidden(`Invalid transition: ${defect.status} → ${newStatus}`)
-		}
-		if (!canSetStatus(userRoles, newStatus)) {
-			throw Forbidden(`Insufficient role to set status to ${newStatus}`)
+			throw Forbidden(`Invalid transition: ${defect.status} → ${newStatus}`);
 		}
 
-		defect.status = newStatus
-		defect.updated_at = new Date()
-		await this.repo.save(defect)
-		return defect
+		defect.status = newStatus;
+		defect.updated_at = new Date();
+		await this.repo.save(defect);
+		return defect;
 	}
 
 	private buildQb(params: {
-		status?: 'new' | 'in_work' | 'review' | 'closed' | 'canceled'
-		priority?: 'low' | 'med' | 'high' | 'critical'
-		projectId?: string
-		assigneeId?: string
-		q?: string
-		sort?: `${'created_at' | 'due_date'}:${'asc' | 'desc'}`
+		status?: Status;
+		priority?: Priority;
+		projectId?: string;
+		assigneeId?: string;
+		q?: string;
+		sort?: `${'created_at' | 'due_date'}:${'asc' | 'desc'}`;
 	}) {
 		const qb: SelectQueryBuilder<Defect> = this.repo.createQueryBuilder('d')
 
@@ -152,14 +157,14 @@ export class DefectService {
 
 	// пагинированный список
 	async listAdvanced(params: {
-		limit: number
-		offset: number
-		status?: 'new' | 'in_work' | 'review' | 'closed' | 'canceled'
-		priority?: 'low' | 'med' | 'high' | 'critical'
-		projectId?: string
-		assigneeId?: string
-		q?: string
-		sort?: `${'created_at' | 'due_date'}:${'asc' | 'desc'}`
+		limit: number;
+		offset: number;
+		status?: Status;
+		priority?: Priority;
+		projectId?: string;
+		assigneeId?: string;
+		q?: string;
+		sort?: `${'created_at' | 'due_date'}:${'asc' | 'desc'}`;
 	}) {
 		const qb = this.buildQb(params).limit(params.limit).offset(params.offset)
 		const [items, total] = await qb.getManyAndCount()
@@ -168,12 +173,12 @@ export class DefectService {
 
 	// экспорт
 	async exportAdvanced(params: {
-		status?: 'new' | 'in_work' | 'review' | 'closed' | 'canceled'
-		priority?: 'low' | 'med' | 'high' | 'critical'
-		projectId?: string
-		assigneeId?: string
-		q?: string
-		sort?: `${'created_at' | 'due_date'}:${'asc' | 'desc'}`
+		status?: Status;
+		priority?: Priority;
+		projectId?: string;
+		assigneeId?: string;
+		q?: string;
+		sort?: `${'created_at' | 'due_date'}:${'asc' | 'desc'}`;
 	}) {
 		const qb = this.buildQb(params)
 		return await qb.getMany()

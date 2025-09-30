@@ -5,7 +5,6 @@ import { useAuth } from '@/store/auth'
 import { api, apiBlob } from '@/lib/api'
 import AuthGuard from '@/components/AuthGuard'
 import { CreateDefectDialog } from '@/components/CreateDefectDialog'
-
 type Defect = {
 	id: string
 	title: string
@@ -27,10 +26,8 @@ const SORTS = [
 
 
 export default function DefectsPage() {
-        <AuthGuard>
-			<DefectsPage />
-		</AuthGuard>
- 	 const { token } = useAuth()
+
+ 	 const { token, hydrated } = useAuth()
 	const [rows, setRows] = useState<Defect[]>([])
 	const [total, setTotal] = useState(0)
 
@@ -53,7 +50,7 @@ export default function DefectsPage() {
 	}, [q, status, priority, sort])
 
 	useEffect(() => {
-		if (!token) return
+		if (!token || !hydrated) return
 		api<{ items: Defect[]; total: number }>(
 			`/api/defects?${query}`,
 			'GET',
@@ -82,146 +79,135 @@ export default function DefectsPage() {
 	}
 
 	return (
-		<div className='space-y-4'>
-			<div className='flex flex-wrap gap-3 items-end justify-between'>
-				<h1 className='text-xl font-semibold'>Дефекты</h1>
-				<div className='flex flex-wrap gap-2'>
-					<input
-						value={q}
-						onChange={e => setQ(e.target.value)}
-						placeholder='Поиск…'
-						className='border rounded px-3 py-1'
-					/>
-					<select
-						value={status}
-						onChange={e => setStatus(e.target.value)}
-						className='border rounded px-2 py-1'
-					>
-						<option value=''>Все статусы</option>
-						{STATUS.map(s => (
-							<option key={s} value={s}>
-								{s}
-							</option>
-						))}
-					</select>
-					<select
-						value={priority}
-						onChange={e => setPriority(e.target.value)}
-						className='border rounded px-2 py-1'
-					>
-						<option value=''>Любой приоритет</option>
-						{PRIOR.map(p => (
-							<option key={p} value={p}>
-								{p}
-							</option>
-						))}
-					</select>
-					<select
-						value={sort}
-						onChange={e => setSort(e.target.value)}
-						className='border rounded px-2 py-1'
-					>
-						{SORTS.map(s => (
-							<option key={s} value={s}>
-								{s}
-							</option>
-						))}
-					</select>
+		<AuthGuard>
+			<div className='space-y-4'>
+				<div className='flex flex-wrap gap-3 items-end justify-between'>
+					<h1 className='text-xl font-semibold'>Дефекты</h1>
+					<div className='flex flex-wrap gap-2'>
+						<input
+							value={q}
+							onChange={e => setQ(e.target.value)}
+							placeholder='Поиск…'
+							className='border rounded px-3 py-1'
+						/>
+						<select
+							value={status}
+							onChange={e => setStatus(e.target.value)}
+							className='border rounded px-2 py-1'
+						>
+							<option value=''>Все статусы</option>
+							{STATUS.map(s => (
+								<option key={s} value={s}>
+									{s}
+								</option>
+							))}
+						</select>
+						<select
+							value={priority}
+							onChange={e => setPriority(e.target.value)}
+							className='border rounded px-2 py-1'
+						>
+							<option value=''>Любой приоритет</option>
+							{PRIOR.map(p => (
+								<option key={p} value={p}>
+									{p}
+								</option>
+							))}
+						</select>
+						<select
+							value={sort}
+							onChange={e => setSort(e.target.value)}
+							className='border rounded px-2 py-1'
+						>
+							{SORTS.map(s => (
+								<option key={s} value={s}>
+									{s}
+								</option>
+							))}
+						</select>
 
-					<button
-						onClick={() => setOpenCreate(true)}
-						className='px-3 py-1 bg-emerald-600 text-white rounded text-sm'
-					>
-						Создать
-					</button>
-					<button
-						onClick={() => download('csv')}
-						className='px-3 py-1 bg-slate-900 text-white rounded text-sm'
-					>
-						CSV
-					</button>
-					<button
-						onClick={() => download('xlsx')}
-						className='px-3 py-1 bg-slate-900 text-white rounded text-sm'
-					>
-						Excel
-					</button>
-
-					<button
-						onClick={() => download('csv')}
-						className='px-3 py-1 bg-slate-900 text-white rounded text-sm'
-					>
-						CSV
-					</button>
-					<button
-						onClick={() => download('xlsx')}
-						className='px-3 py-1 bg-slate-900 text-white rounded text-sm'
-					>
-						Excel
-					</button>
+						<button
+							onClick={() => setOpenCreate(true)}
+							className='px-3 py-1 bg-emerald-600 text-white rounded text-sm'
+						>
+							Создать
+						</button>
+						<button
+							onClick={() => download('csv')}
+							className='px-3 py-1 bg-slate-900 text-white rounded text-sm'
+						>
+							CSV
+						</button>
+						<button
+							onClick={() => download('xlsx')}
+							className='px-3 py-1 bg-slate-900 text-white rounded text-sm'
+						>
+							Excel
+						</button>
+					</div>
 				</div>
-			</div>
 
-			<div className='bg-white border rounded'>
-				<table className='w-full text-sm'>
-					<thead className='bg-slate-100'>
-						<tr>
-							<th className='p-2 text-left'>Заголовок</th>
-							<th className='p-2'>Статус</th>
-							<th className='p-2'>Приоритет</th>
-							<th className='p-2'>Создано</th>
-							<th className='p-2 w-24'></th>
-						</tr>
-					</thead>
-					<tbody>
-						{rows.map(d => (
-							<tr key={d.id} className='border-t'>
-								<td className='p-2'>{d.title}</td>
-								<td className='p-2 text-center'>{d.status}</td>
-								<td className='p-2 text-center'>{d.priority}</td>
-								<td className='p-2 text-center'>
-									{new Date(d.created_at).toLocaleString()}
-								</td>
-								<td className='p-2 text-right'>
-									<Link
-										href={`/defects/${d.id}`}
-										className='text-blue-700 underline'
-									>
-										Открыть
-									</Link>
-								</td>
-							</tr>
-						))}
-						{rows.length === 0 && (
+				<div className='bg-white border rounded'>
+					<table className='w-full text-sm'>
+						<thead className='bg-slate-100'>
 							<tr>
-								<td colSpan={5} className='p-6 text-center text-slate-500'>
-									Нет записей
-								</td>
+								<th className='p-2 text-left'>Заголовок</th>
+								<th className='p-2'>Статус</th>
+								<th className='p-2'>Приоритет</th>
+								<th className='p-2'>Создано</th>
+								<th className='p-2 w-24'></th>
 							</tr>
-						)}
-					</tbody>
-				</table>
+						</thead>
+						<tbody>
+							{rows.map(d => (
+								<tr key={d.id} className='border-t'>
+									<td className='p-2'>{d.title}</td>
+									<td className='p-2 text-center'>{d.status}</td>
+									<td className='p-2 text-center'>{d.priority}</td>
+									<td className='p-2 text-center'>
+										{new Date(d.created_at).toLocaleString()}
+									</td>
+									<td className='p-2 text-right'>
+										<Link
+											href={`/defects/${d.id}`}
+											className='text-blue-700 underline'
+										>
+											Открыть
+										</Link>
+									</td>
+								</tr>
+							))}
+							{rows.length === 0 && (
+								<tr>
+									<td colSpan={5} className='p-6 text-center text-slate-500'>
+										Нет записей
+									</td>
+								</tr>
+							)}
+						</tbody>
+					</table>
+				</div>
+				<div className='text-xs text-slate-500'>Всего: {total}</div>
+				<CreateDefectDialog
+					open={openCreate}
+					onClose={() => setOpenCreate(false)}
+					onCreated={() => {
+						// перезагрузить список после создания
+						if (!token) return
+						api<{ items: Defect[]; total: number }>(
+							`/api/defects?${query}`,
+							'GET',
+							undefined,
+							token
+						)
+							.then(d => {
+								setRows(d.items)
+								setTotal(d.total)
+							})
+							.catch(console.error)
+					}}
+				/>
 			</div>
-			<div className='text-xs text-slate-500'>Всего: {total}</div>
-			<CreateDefectDialog
-				open={openCreate}
-				onClose={() => setOpenCreate(false)}
-				onCreated={() => {
-					// перезагрузить список после создания
-					if (!token) return
-					api<{ items: Defect[]; total: number }>(
-						`/api/defects?${query}`,
-						'GET',
-						undefined,
-						token
-					)
-						.then(d => {
-							setRows(d.items)
-							setTotal(d.total)
-						})
-						.catch(console.error)
-				}}
-			/>
-		</div>
+		</AuthGuard>
 	)
 }
