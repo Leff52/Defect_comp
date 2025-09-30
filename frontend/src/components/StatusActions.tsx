@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { api } from '@/lib/api'
 import { useAuth } from '@/store/auth'
+import { useToast } from '@/components/Toast'
 
 type Status = 'new' | 'in_work' | 'review' | 'closed' | 'canceled'
 
@@ -38,8 +39,9 @@ export function StatusActions({
 	current: Status
 	onChanged: (d: { id: string; status: Status }) => void
 }) {
-	const { user } = useAuth()
-	const [busy, setBusy] = useState<string | null>(null)
+	const { user, token } = useAuth()
+	const [busy, setBusy] = useState(false)
+	const { show: toast, Toast } = useToast()
 
 	const roles = user?.roles ?? []
 	const next = transitions[current] || []
@@ -51,36 +53,41 @@ export function StatusActions({
 		return null 
 	}
 
-	const click = async (s: Status) => {
+	async function onClick(nextStatus: 'closed' | 'canceled' | Status) {
+		if (busy) return;
+		setBusy(true);
 		try {
-			setBusy(s)
-			const updated = await api<{ id: string; status: Status }>(
-				`/api/defects/${defectId}/status`,
-				'PATCH',
-				{ status: s }
-			)
-			onChanged(updated)
+			await api(`/api/defects/${defectId}/status`, 'PATCH', { status: nextStatus }, token);
+			toast('Статус обновлён');
+			onChanged({ id: defectId, status: nextStatus });
+		} catch (e: any) {
+			toast(e?.message ?? 'Не удалось изменить статус');
 		} finally {
-			setBusy(null)
+			setBusy(false);
 		}
 	}
 
 	return (
-		<div className='flex gap-8 mb-4'>
-			{allowed.map(s => (
-				<button
-					key={s}
-					onClick={() => click(s)}
-					disabled={busy === s}
-					className='px-3 py-1 rounded bg-slate-900 text-white disabled:opacity-50'
-				>
-					{s === 'closed'
-						? 'Закрыть'
-						: s === 'canceled'
-						? 'Отменить'
-						: labels[s]}
-				</button>
-			))}
-		</div>
+		<>
+			<div className='flex gap-8 mb-4'>
+				{allowed.map(s => (
+					<button
+						key={s}
+						disabled={busy} 
+						onClick={() => onClick(s)}
+						className='px-3 py-1 rounded bg-slate-900 text-white disabled:opacity-50 disabled:cursor-not-allowed'
+					>
+						{busy ? 'Обновляем...' : (
+							s === 'closed'
+								? 'Закрыть'
+								: s === 'canceled'
+								? 'Отменить'
+								: labels[s]
+						)}
+					</button>
+				))}
+			</div>
+			<Toast />
+		</>
 	)
 }

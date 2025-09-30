@@ -18,30 +18,20 @@ const storage = multer.diskStorage({
   },
 });
 
-const maxMb = parseInt(process.env.MAX_FILE_SIZE_MB || '10', 10);
-
-const allowed = (process.env.ALLOWED_MIME || '')
-  .split(',')
-  .map(s => s.trim())
-  .filter(Boolean);
-
-function fileFilter(
-  _req: Request,
-  file: Express.Multer.File,
-  cb: multer.FileFilterCallback
-): void {
-  if (allowed.length > 0 && !allowed.includes(file.mimetype)) {
-    return cb(new Error(`Неподдерживаемый тип файла: ${file.mimetype}. Разрешенные типы: ${allowed.join(', ')}`));
-  }
-  cb(null, true);
-}
+// src/utils/upload.ts
+const ALLOWED = new Set([
+  'application/pdf',
+  'image/png',
+  'image/jpeg',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+]);
 
 export const uploader = multer({
   storage,
-  fileFilter,
-  limits: { 
-    fileSize: maxMb * 1024 * 1024, 
-    files: 10, 
+  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
+  fileFilter: (_req, file, cb) => {
+    if (ALLOWED.has(file.mimetype)) cb(null, true);
+    else cb(new Error('Unsupported file type'));
   },
 });
 

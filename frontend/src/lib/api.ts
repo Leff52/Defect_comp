@@ -44,12 +44,16 @@ export async function api<T>(
 
 export async function apiBlob(
 	path: string,
-	method: string = 'GET',
-	body?: any,
+	method: 'GET' | 'POST' = 'GET',
+	body?: BodyInit | null,
 	token?: string | null
 ): Promise<Blob> {
 	const headers: Record<string, string> = {}
-	if (token) headers['Authorization'] = `Bearer ${token}`
+	const effectiveToken = token ?? getAuthToken()
+	
+	if (effectiveToken && effectiveToken !== 'undefined') {
+		headers['Authorization'] = `Bearer ${effectiveToken}`
+	}
 
 	const res = await fetch(API + path, {
 		method,
@@ -62,6 +66,74 @@ export async function apiBlob(
 	}
 	if (!res.ok) throw new Error(await safeText(res))
 	return res.blob()
+}
+
+export async function apiForm<T>(
+	path: string,
+	method: 'POST' | 'PUT' | 'PATCH' = 'POST',
+	form: FormData,
+	token?: string | null
+): Promise<T> {
+	const headers: Record<string, string> = {}
+	const effectiveToken = token ?? getAuthToken()
+
+	if (effectiveToken && effectiveToken !== 'undefined') {
+		headers['Authorization'] = `Bearer ${effectiveToken}`
+	} else {
+		console.warn('[API-FORM] no token for', path)
+	}
+
+	console.log('[API-FORM] →', API + path, {
+		hasToken: !!effectiveToken,
+		peek: effectiveToken?.slice(0, 12),
+		formData: true,
+	})
+
+	const res = await fetch(API + path, { 
+		method, 
+		headers, 
+		body: form 
+	})
+
+	if (res.status === 401) throw new Error('Unauthorized')
+	if (!res.ok) throw new Error(await safeText(res))
+	return res.json() as Promise<T>
+}
+
+// lib/api.ts — вместо старого apiBlob верни и blob, и filename
+export async function apiBlobWithName(
+	path: string,
+	token?: string | null
+): Promise<{ blob: Blob; filename?: string }> {
+	const headers: Record<string, string> = {}
+	const t = token ?? getAuthToken()
+	if (t && t !== 'undefined') {
+		headers['Authorization'] = `Bearer ${t}`
+	}
+
+	const res = await fetch(API + path, {
+		method: 'GET',
+		headers,
+	})
+	if (!res.ok) throw new Error(await safeText(res))
+
+	const cd = res.headers.get('Content-Disposition') || ''
+	const filename = parseFilenameFromCD(cd)
+	const blob = await res.blob()
+	return { blob, filename }
+}
+
+function parseFilenameFromCD(cd: string): string | undefined {
+	const star = /filename\*\s*=\s*UTF-8''([^;]+)/i.exec(cd)
+	if (star?.[1]) { 
+		try { return decodeURIComponent(star[1]) } catch {} 
+	}
+	// filename="Файл.pdf"
+	const quoted = /filename\s*=\s*"([^"]+)"/i.exec(cd)
+	if (quoted?.[1]) return quoted[1]
+	// filename=File.pdf
+	const bare = /filename\s*=\s*([^;]+)/i.exec(cd)
+	return bare?.[1]?.trim()
 }
 
 async function safeText(r: Response) {

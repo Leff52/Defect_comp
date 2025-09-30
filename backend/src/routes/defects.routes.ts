@@ -5,7 +5,8 @@ import { Defect } from '../models/Defect'
 import { DefectService } from '../services/DefectService'
 import { DefectController } from '../controllers/DefectController'
 import { authMiddleware } from '../middlewares/authMiddleware'
-import { requireRole, requireRoleForStatus } from '../middlewares/requireRole'
+import { requireRole } from '../middlewares/requireRole'
+import { requireRoles } from '../middlewares/requireRoles'
 const r = Router()
 const repo = AppDataSource.getRepository(Defect)
 const service = new DefectService(repo)
@@ -38,7 +39,7 @@ r.delete(
 r.patch(
 	'/defects/:id/status',
 	authMiddleware,
-	requireRoleForStatus(),
+	requireRoles(['Admin','Manager']),
 	ctrl.changeStatus
 )
 

@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useAuth } from '@/store/auth';
-import { api } from '@/lib/api';
+import { api, apiBlobWithName } from '@/lib/api';
 import { FileUpload } from '@/components/FileUpload';
 import AuthGuard from '@/components/AuthGuard';
 import { StatusActions } from '@/components/StatusActions';
@@ -49,7 +49,7 @@ export default function DefectDetails() {
     const d = await api<Defect>(`/api/defects/${id}`);
     setDefect(d);
 
-    if (!token) return; // комменты/вложения — после логина
+    if (!token) return; // комменты/вложения после логина
     const cs = await api<{ items: Comment[]; total: number }>(
       `/api/defects/${id}/comments?limit=100`,
       'GET',
@@ -65,6 +65,26 @@ export default function DefectDetails() {
     setComments(cs.items);
     setAttachments(at.items);
   };
+
+  // функция для скачивания файла
+  async function handleDownload(att: { id: string; file_name: string }) {
+    try {
+      const { blob, filename } = await apiBlobWithName(`/api/attachments/${att.id}/download`, token)
+      
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+
+      // используем имя из ответа, а не из БД
+      a.download = filename || att.file_name || 'attachment'
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      console.error(e) 
+    }
+  }
 
   useEffect(() => {
 		if (!hydrated) return
@@ -173,22 +193,20 @@ export default function DefectDetails() {
           <div className="bg-white border rounded p-4">
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-semibold">Вложения</h2>
-              {token && <FileUpload defectId={id} token={token} onUploaded={refresh} />}
+              {token && <FileUpload defectId={id} onUploaded={() => { refresh(); }} />}
             </div>
             <ul className="text-sm space-y-2 max-h-64 overflow-auto">
-              {attachments.map((a) => {
-                const url = a.url_or_path.startsWith('/files')
-                  ? `${process.env.NEXT_PUBLIC_API_URL}${a.url_or_path}`
-                  : `${process.env.NEXT_PUBLIC_API_URL}/files/${a.url_or_path}`;
-                return (
-                  <li key={a.id} className="flex items-center justify-between border-b pb-1">
-                    <span>{a.file_name}</span>
-                    <a href={url} target="_blank" rel="noreferrer" className="text-blue-700 underline">
-                      Скачать
-                    </a>
-                  </li>
-                );
-              })}
+              {attachments.map((a) => (
+                <li key={a.id} className="flex items-center justify-between border-b pb-1">
+                  <span>{a.file_name}</span>
+                  <button
+                    onClick={() => handleDownload(a)}
+                    className="text-blue-700 hover:text-blue-900 underline hover:no-underline transition-colors"
+                  >
+                    Скачать
+                  </button>
+                </li>
+              ))}
               {attachments.length === 0 && (
                 <li className="text-slate-500">Файлов нет</li>
               )}

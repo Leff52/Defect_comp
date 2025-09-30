@@ -42,6 +42,36 @@
  *       201: { description: Created }
  */
 
+/**
+ * @openapi
+ * /api/attachments/{id}/download:
+ *   get:
+ *     tags: [Attachments]
+ *     summary: Download attachment file
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Attachment ID
+ *     responses:
+ *       200:
+ *         description: File download
+ *         content:
+ *           application/octet-stream:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       404:
+ *         description: Attachment or file not found
+ *       401:
+ *         description: Unauthorized
+ */
+
 import { Router } from 'express'
 import { authMiddleware } from '../middlewares/authMiddleware'
 import { AttachmentService } from '../services/AttachmentService'
@@ -59,6 +89,7 @@ r.post(
 	uploader.single('file'),
 	ctrl.uploadForDefect
 )
+r.get('/attachments/:id/download', authMiddleware, ctrl.download)
 r.delete('/attachments/:id', authMiddleware, ctrl.remove)
 
 export default r

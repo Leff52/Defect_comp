@@ -1,10 +1,21 @@
 import { Request, Response, NextFunction } from 'express'
 import { z } from 'zod'
+import contentDisposition from 'content-disposition'
+import mime from 'mime-types'
+import fs from 'fs'
+import path from 'path'
 import { AttachmentService } from '../services/AttachmentService'
 import { getPublicUrl } from '../utils/upload'
 
 const ParamDefect = z.object({ id: z.string().uuid() })
 const ParamId = z.object({ id: z.string().uuid() })
+
+// функция для исправления 
+function tryFixMojibake(name: string): string {
+	const repaired = Buffer.from(name, 'latin1').toString('utf8')
+	const looksCyr = /[а-яё]/i.test(repaired)
+	return looksCyr ? repaired : name
+}
 
 export class AttachmentController {
 	constructor(private readonly service: AttachmentService) {}
@@ -60,6 +71,28 @@ export class AttachmentController {
 			res.json(await this.service.remove(id));
 		} catch (e) {
 			next(e)
+		}
+	}
+
+	download = async (req: Request, res: Response, next: NextFunction) => {
+		try {
+			const { id } = ParamId.parse(req.params)
+			const row = await this.service.getById(id)
+			if (!row) return res.status(404).json({ error: 'Attachment not found' })
+
+		const rel = row.url_or_path.replace(/^\//,'')
+		const abs = path.resolve(process.cwd(), rel)
+		if (!fs.existsSync(abs)) return res.status(404).json({ error: 'File not found on disk' })
+
+		const rawName = row.file_name || path.basename(abs)
+		const filename = tryFixMojibake(rawName)
+
+		res.setHeader('Content-Disposition', contentDisposition(filename))
+		res.setHeader('Content-Type', row.mime_type || mime.lookup(filename) || 'application/octet-stream')
+
+		fs.createReadStream(abs).pipe(res)
+		} catch (e) { 
+			next(e) 
 		}
 	}
 }

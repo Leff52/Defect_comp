@@ -66,7 +66,7 @@ export default function DefectsPage() {
 
 	const download = async (fmt: 'csv' | 'xlsx') => {
 		if (!token) return
-		const blob = await apiBlob(`/api/defects/export.${fmt}?${query}`, token)
+		const blob = await apiBlob(`/api/defects/export.${fmt}?${query}`, 'GET', undefined, token)
 		const url = URL.createObjectURL(blob)
 		const a = document.createElement('a')
 		a.href = url
@@ -75,7 +75,7 @@ export default function DefectsPage() {
 		a.click()
 		a.remove()
 		URL.revokeObjectURL(url)
-    
+	
 	}
 
 	return (

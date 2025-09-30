@@ -1,13 +1,5 @@
-export function toRoleArray(input: unknown): string[] {
-	if (Array.isArray(input)) return input.filter(Boolean) as string[]
-	if (typeof input === 'string') {
-		return input
-			.split(',')
-			.map(s => s.trim())
-			.filter(Boolean)
-	}
-	if (input && typeof input === 'object' && 'roles' in (input as any)) {
-		return toRoleArray((input as any).roles)
-	}
-	return []
-}
+// src/utils/roles.ts
+export const toRoleArray = (val: unknown): string[] =>
+	Array.isArray(val) ? val.filter(Boolean) :
+	typeof val === 'string' ? val.split(',').map(s => s.trim()).filter(Boolean) :
+	[];
