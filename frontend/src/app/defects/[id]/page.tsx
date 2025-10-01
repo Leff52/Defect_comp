@@ -34,6 +34,42 @@ type Attachment = {
   created_at: string;
 };
 
+const statusLabels = {
+  new: 'Новый',
+  in_work: 'В работе',
+  review: 'На проверке',
+  closed: 'Закрыт',
+  canceled: 'Отменён'
+};
+
+const priorityLabels = {
+  low: 'Низкий',
+  med: 'Средний',
+  high: 'Высокий',
+  critical: 'Критический'
+};
+
+const getStatusColor = (status: Status) => {
+  switch (status) {
+    case 'new': return 'bg-blue-100 text-blue-800'
+    case 'in_work': return 'bg-indigo-100 text-indigo-800'
+    case 'review': return 'bg-purple-100 text-purple-800'
+    case 'closed': return 'bg-green-100 text-green-800'
+    case 'canceled': return 'bg-gray-100 text-gray-800'
+    default: return 'bg-gray-100 text-gray-800'
+  }
+};
+
+const getPriorityColor = (priority: Priority) => {
+  switch (priority) {
+    case 'critical': return 'bg-red-100 text-red-800'
+    case 'high': return 'bg-orange-100 text-orange-800'
+    case 'med': return 'bg-yellow-100 text-yellow-800'
+    case 'low': return 'bg-green-100 text-green-800'
+    default: return 'bg-gray-100 text-gray-800'
+  }
+};
+
 export default function DefectDetails() {
   const { id } = useParams<{ id: string }>();
   const { token, hydrated } = useAuth();
@@ -43,13 +79,12 @@ export default function DefectDetails() {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [text, setText] = useState('');
 
-  // универсальный рефреш одной карточки
   const refresh = async () => {
     if (!id) return;
     const d = await api<Defect>(`/api/defects/${id}`);
     setDefect(d);
 
-    if (!token) return; // комменты/вложения после логина
+    if (!token) return;
     const cs = await api<{ items: Comment[]; total: number }>(
       `/api/defects/${id}/comments?limit=100`,
       'GET',
@@ -66,7 +101,6 @@ export default function DefectDetails() {
     setAttachments(at.items);
   };
 
-  // функция для скачивания файла
   async function handleDownload(att: { id: string; file_name: string }) {
     try {
       const { blob, filename } = await apiBlobWithName(`/api/attachments/${att.id}/download`, token)
@@ -75,7 +109,6 @@ export default function DefectDetails() {
       const a = document.createElement('a')
       a.href = url
 
-      // используем имя из ответа, а не из БД
       a.download = filename || att.file_name || 'attachment'
       document.body.appendChild(a)
       a.click()
@@ -109,16 +142,17 @@ export default function DefectDetails() {
       await refresh();
     } catch (error: any) {
       console.error('Error adding comment:', error);
-      // будующий тост об ошибке
     }
   };
 
-  // показываю загрузку если дефект еще не загружен
   if (!defect) {
     return (
       <AuthGuard>
-        <div className="flex items-center justify-center min-h-64">
-          <div className="text-lg text-gray-500">Загрузка...</div>
+        <div className="min-h-96 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <div className="text-lg text-gray-600">Загрузка дефекта...</div>
+          </div>
         </div>
       </AuthGuard>
     );
@@ -126,19 +160,31 @@ export default function DefectDetails() {
 
   return (
     <AuthGuard>
-      <div className="space-y-6">
-        {/* карточка */}
-        <div className="bg-white border rounded p-4">
-          <h1 className="text-xl font-semibold mb-1">{defect.title}</h1>
-          <div className="text-sm text-slate-600 mb-2">
-            Статус: {defect.status} • Приоритет: {defect.priority}
+      <div className="max-w-6xl mx-auto p-6 space-y-8">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+          <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
+            <div className="flex-1">
+              <h1 className="text-3xl font-bold text-gray-900 mb-4">{defect.title}</h1>
+              <div className="flex flex-wrap gap-3 mb-6">
+                <span className={`inline-flex px-3 py-1 text-sm font-medium rounded-full ${getStatusColor(defect.status)}`}>
+                  {statusLabels[defect.status]}
+                </span>
+                <span className={`inline-flex px-3 py-1 text-sm font-medium rounded-full ${getPriorityColor(defect.priority)}`}>
+                  {priorityLabels[defect.priority]}
+                </span>
+                <span className="inline-flex px-3 py-1 text-sm font-medium rounded-full bg-gray-100 text-gray-800">
+                  {new Date(defect.created_at).toLocaleDateString('ru-RU')}
+                </span>
+              </div>
+              {defect.description && (
+                <div className="prose prose-gray max-w-none">
+                  <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{defect.description}</p>
+                </div>
+              )}
+            </div>
           </div>
-          {defect.description && (
-            <p className="text-sm whitespace-pre-wrap">{defect.description}</p>
-          )}
         </div>
 
-        {/* кнопки переходов статусов по ролям */}
         <StatusActions
           defectId={defect.id}
           current={defect.status}
@@ -147,70 +193,91 @@ export default function DefectDetails() {
           }
         />
 
-        {/* комменты и вложения */}
-        <div className="grid md:grid-cols-2 gap-6">
-          <div className="bg-white border rounded p-4">
-            <h2 className="font-semibold mb-3">Комментарии</h2>
-            <div className="space-y-3 max-h-64 overflow-auto">
+        <div className="grid lg:grid-cols-2 gap-8">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-6">Комментарии</h2>
+            
+            <div className="space-y-4 max-h-96 overflow-y-auto mb-6">
               {comments.map((c) => (
-                <div key={c.id} className="text-sm border-b pb-2">
-                  <div className="text-slate-500">
-                    {new Date(c.created_at).toLocaleString()}
+                <div key={c.id} className="border-l-4 border-blue-100 pl-4 py-3">
+                  <div className="text-xs text-gray-500 mb-2">
+                    {new Date(c.created_at).toLocaleString('ru-RU')}
                   </div>
-                  <div>{c.text}</div>
+                  <div className="text-gray-800 leading-relaxed">{c.text}</div>
                 </div>
               ))}
               {comments.length === 0 && (
-                <div className="text-sm text-slate-500">Пока нет комментариев</div>
+                <div className="text-center py-8 text-gray-500">
+                  <div className="text-lg font-medium">Пока нет комментариев</div>
+                  <div className="text-sm">Станьте первым, кто оставит комментарий, йоу</div>
+                </div>
               )}
             </div>
 
             {token && (
-              <div className="mt-3 flex gap-2">
-                <input
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  placeholder="Написать комментарий…"
-                  className="flex-1 border rounded px-3 py-2"
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      addComment();
-                    }
-                  }}
-                />
-                <button
-                  onClick={addComment}
-                  disabled={!text.trim()}
-                  className="px-3 py-2 bg-slate-900 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Отправить
-                </button>
+              <div className="border-t pt-6">
+                <div className="flex gap-3">
+                  <input
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    placeholder="Добавить комментарий..."
+                    className="flex-1 px-4 py-3 border text-gray-600 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        addComment();
+                      }
+                    }}
+                  />
+                  <button
+                    onClick={addComment}
+                    disabled={!text.trim()}
+                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  >
+                    Отправить
+                  </button>
+                </div>
               </div>
             )}
           </div>
 
-          <div className="bg-white border rounded p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-semibold">Вложения</h2>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-gray-900">Вложения</h2>
               {token && <FileUpload defectId={id} onUploaded={() => { refresh(); }} />}
             </div>
-            <ul className="text-sm space-y-2 max-h-64 overflow-auto">
+            
+            <div className="space-y-3 max-h-96 overflow-y-auto">
               {attachments.map((a) => (
-                <li key={a.id} className="flex items-center justify-between border-b pb-1">
-                  <span>{a.file_name}</span>
+                <div key={a.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium text-gray-900">{a.file_name}</div>
+                      <div className="text-xs text-gray-500">
+                        {new Date(a.created_at).toLocaleDateString('ru-RU')}
+                      </div>
+                    </div>
+                  </div>
                   <button
                     onClick={() => handleDownload(a)}
-                    className="text-blue-700 hover:text-blue-900 underline hover:no-underline transition-colors"
+                    className="px-3 py-1 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition"
                   >
                     Скачать
                   </button>
-                </li>
+                </div>
               ))}
               {attachments.length === 0 && (
-                <li className="text-slate-500">Файлов нет</li>
+                <div className="text-center py-8 text-gray-500">
+                  <div className="text-lg font-medium">Нет вложений</div>
+                  <div className="text-sm">Загрузите файлы для этого дефекта</div>
+                </div>
               )}
-            </ul>
+            </div>
           </div>
         </div>
       </div>
