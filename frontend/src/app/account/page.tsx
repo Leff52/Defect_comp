@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '@/store/auth'
 import { useRouter } from 'next/navigation'
 import { getMe, changeEmail, changePassword } from '@/lib/me'
+import UserManagement from '@/components/UserManagement'
 
 export default function AccountPage() {
 	const { token, logout, user } = useAuth()
@@ -284,6 +285,9 @@ export default function AccountPage() {
 								</button>
 							</div>
 						</section>
+
+						{/* Компонент управления пользователями для Admin/Lead */}
+						<UserManagement userRoles={profile?.roles || []} />
 					</div>
 				</div>
 			</div>

@@ -5,6 +5,7 @@ import { useAuth } from '@/store/auth'
 import { api, apiBlob } from '@/lib/api'
 import AuthGuard from '@/components/AuthGuard'
 import { CreateDefectDialog } from '@/components/CreateDefectDialog'
+import { useToast } from '@/components/Toast'
 
 type Defect = {
 	id: string
@@ -48,7 +49,8 @@ const sortLabels = {
 }
 
 export default function DefectsPage() {
-	const { token, hydrated } = useAuth()
+	const { token, hydrated, user } = useAuth()
+	const { show: showToast, Toast } = useToast()
 	const [rows, setRows] = useState<Defect[]>([])
 	const [total, setTotal] = useState(0)
 	const [openCreate, setOpenCreate] = useState(false)
@@ -57,6 +59,10 @@ export default function DefectsPage() {
 	const [status, setStatus] = useState<string>('')
 	const [priority, setPriority] = useState<string>('')
 	const [sort, setSort] = useState<string>('created_at:desc')
+	const canExportData = () => {
+		if (!user?.roles) return false
+		return !user.roles.includes('Engineer')
+	}
 
 	const query = useMemo(() => {
 		const p = new URLSearchParams()
@@ -85,6 +91,11 @@ export default function DefectsPage() {
 
 	const download = async (fmt: 'csv' | 'xlsx') => {
 		if (!token) return
+		if (!canExportData()) {
+			showToast('У вас нет прав для экспорта данных', 'error')
+			return
+		}
+		
 		const blob = await apiBlob(`/api/defects/export.${fmt}?${query}`, 'GET', undefined, token)
 		const url = URL.createObjectURL(blob)
 		const a = document.createElement('a')
@@ -180,13 +191,25 @@ export default function DefectsPage() {
 					</button>
 					<button
 						onClick={() => download('csv')}
-						className='px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition'
+						disabled={!canExportData()}
+						className={`px-4 py-2 rounded-lg font-medium transition ${
+							canExportData()
+								? 'bg-gray-600 hover:bg-gray-700 text-white'
+								: 'bg-gray-300 text-gray-500 cursor-not-allowed'
+						}`}
+						title={!canExportData() ? 'У вас нет прав для экспорта данных' : ''}
 					>
 						Экспорт CSV
 					</button>
 					<button
 						onClick={() => download('xlsx')}
-						className='px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition'
+						disabled={!canExportData()}
+						className={`px-4 py-2 rounded-lg font-medium transition ${
+							canExportData()
+								? 'bg-green-600 hover:bg-green-700 text-white'
+								: 'bg-gray-300 text-gray-500 cursor-not-allowed'
+						}`}
+						title={!canExportData() ? 'У вас нет прав для экспорта данных' : ''}
 					>
 						Экспорт Excel
 					</button>
@@ -298,6 +321,7 @@ export default function DefectsPage() {
 							.catch(console.error)
 					}}
 				/>
+				<Toast />
 			</div>
 		</AuthGuard>
 	)

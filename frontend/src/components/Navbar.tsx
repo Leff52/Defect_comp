@@ -25,7 +25,7 @@ export function Navbar() {
 							href="/defects" 
 							className="text-xl font-bold text-gray-900 hover:text-blue-600 transition"
 						>
-							DefectFlow
+							Система Контроля
 						</Link>
 						<nav className="hidden md:flex space-x-6">
 							<Link 

@@ -12,6 +12,7 @@ import projects from './routes/projects.routes'
 import stages from './routes/stages.routes'
 import comments from './routes/comments.routes'
 import attachments from './routes/attachments.routes'
+import users from './routes/users.routes'
 import { setupSwagger } from './config/swagger'
 
 
@@ -32,6 +33,7 @@ app.use('/api', auth)
 app.use('/api', projects)
 app.use('/api', stages)
 app.use('/api', comments)
+app.use('/api', users)
 app.use(
 	'/files',
 	express.static(path.resolve(process.env.UPLOAD_DIR || 'uploads'))
