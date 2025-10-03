@@ -86,13 +86,13 @@ export class DefectService {
 			{ id },
 			{ ...patch, updated_at: new Date() }
 		)
-		if (res.affected === 0) throw NotFound('Defect not found')
+		if (res.affected === 0) throw NotFound('Дефект не обнаружен')
 		return this.getById(id)
 	}
 
 	async remove(id: string) {
 		const res = await this.repo.delete({ id })
-		if (res.affected === 0) throw NotFound('Defect not found')
+		if (res.affected === 0) throw NotFound('Дефект не обнаружен')
 		return { ok: true }
 	}
 	
@@ -106,15 +106,15 @@ export class DefectService {
 		const allowed = ['Admin', 'Manager'];
 		
 		if (!roles.some(r => allowed.includes(r))) {
-			throw Forbidden('Only Admin/Manager can change status');
+			throw Forbidden('Изменить статус может только администратор/менеджер')
 		}
 
 		const defect = await this.repo.findOne({ where: { id } });
-		if (!defect) throw NotFound('Defect not found');
+		if (!defect) throw NotFound('Дефект не найден');
 
 		const allowedNext = transitions[defect.status] || [];
 		if (!allowedNext.includes(newStatus)) {
-			throw Forbidden(`Invalid transition: ${defect.status} → ${newStatus}`);
+			throw Forbidden(`Недопустимый переход: ${defect.status} → ${newStatus}`);
 		}
 
 		defect.status = newStatus;

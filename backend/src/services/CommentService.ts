@@ -8,7 +8,7 @@ export class CommentService {
 	private repo: Repository<Comment> = AppDataSource.getRepository(Comment)
 	async getById(id: string) {
 		const row = await this.repo.findOne({ where: { id } })
-		if (!row) throw NotFound('Comment not found')
+		if (!row) throw NotFound('Комментарий не найден')
 		return row
 	}
 	async list(
@@ -38,7 +38,7 @@ export class CommentService {
 
 	async remove(id: string) {
 		const res = await this.repo.delete({ id })
-		if (res.affected === 0) throw NotFound('Comment not found')
+		if (res.affected === 0) throw NotFound('Комментарий не найден')
 		return { ok: true }
 	}
 }

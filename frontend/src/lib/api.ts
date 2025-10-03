@@ -143,3 +143,63 @@ async function safeText(r: Response) {
 		return 'Request failed'
 	}
 }
+
+// Project API methods
+export interface Project {
+	id: string
+	name: string
+	customer: string | null
+	created_at: string
+	updated_at: string
+}
+
+export interface ProjectsResponse {
+	items: Project[]
+	total: number
+	limit: number
+	offset: number
+}
+
+export interface CreateProjectData {
+	name: string
+	customer?: string
+}
+
+export interface UpdateProjectData {
+	name?: string
+	customer?: string
+}
+
+export function getProjects(params: {
+	page?: number
+	limit?: number
+	q?: string
+}): Promise<ProjectsResponse> {
+	const searchParams = new URLSearchParams()
+	if (params.page) searchParams.set('page', params.page.toString())
+	if (params.limit) searchParams.set('limit', params.limit.toString())
+	if (params.q) searchParams.set('q', params.q)
+	
+	const query = searchParams.toString()
+	return api<ProjectsResponse>(`/api/projects${query ? `?${query}` : ''}`)
+}
+
+export function getProjectsForSelect(): Promise<{ id: string; name: string }[]> {
+	return api<{ id: string; name: string }[]>('/api/projects/select')
+}
+
+export function getProject(id: string): Promise<Project> {
+	return api<Project>(`/api/projects/${id}`)
+}
+
+export function createProject(data: CreateProjectData): Promise<Project> {
+	return api<Project>('/api/projects', 'POST', data)
+}
+
+export function updateProject(id: string, data: UpdateProjectData): Promise<Project> {
+	return api<Project>(`/api/projects/${id}`, 'PUT', data)
+}
+
+export function deleteProject(id: string): Promise<{ message: string }> {
+	return api<{ message: string }>(`/api/projects/${id}`, 'DELETE')
+}

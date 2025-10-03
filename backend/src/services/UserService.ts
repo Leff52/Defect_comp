@@ -3,6 +3,7 @@ import { In } from 'typeorm'
 import { Role } from '../models/Role'
 import { UserRole } from '../models/UserRole'
 import { AppDataSource } from '../config/data-source'
+import * as argon2 from 'argon2'
 
 export class UserService {
 	private users = AppDataSource.getRepository(User)
@@ -23,5 +24,25 @@ export class UserService {
 	}
 	async getById(userId: string) {
 		return this.users.findOne({ where: { id: userId } })
+	}
+
+	async updateEmail(id: string, email: string) {
+		const row = await this.getById(id)
+		if (!row) return null
+		row.email = email
+		return this.users.save(row)
+	}
+
+	async updatePassword(id: string, newPassword: string) {
+		const row = await this.getById(id)
+		if (!row) return null
+		row.password_hash = await argon2.hash(newPassword)
+		return this.users.save(row)
+	}
+
+	async verifyPassword(userId: string, plain: string) {
+		const row = await this.getById(userId)
+		if (!row || !row.password_hash) return false
+		return argon2.verify(row.password_hash, plain)
 	}
 }

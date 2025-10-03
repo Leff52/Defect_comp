@@ -25,7 +25,7 @@ export function Navbar() {
 							href="/defects" 
 							className="text-xl font-bold text-gray-900 hover:text-blue-600 transition"
 						>
-							DefectFlow деньги на стол
+							DefectFlow
 						</Link>
 						<nav className="hidden md:flex space-x-6">
 							<Link 
@@ -34,13 +34,19 @@ export function Navbar() {
 							>
 								Дефекты
 							</Link>
+							<Link 
+								href="/projects" 
+								className="text-gray-600 hover:text-gray-900 font-medium transition"
+							>
+								Проекты
+							</Link>
 						</nav>
 					</div>
 					
 					<div className="flex items-center space-x-4">
 						{user ? (
 							<>
-								<div className="hidden sm:flex items-center space-x-3">
+								<Link href="/account" className="hidden sm:flex items-center space-x-3 hover:bg-gray-100 rounded-lg px-3 py-2 transition-colors duration-200">
 									<div className="text-right">
 										<div className="text-sm font-medium text-gray-900">
 											{user.full_name}
@@ -52,7 +58,7 @@ export function Navbar() {
 									<div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
 										{initials}
 									</div>
-								</div>
+								</Link>
 								<button
 									onClick={logout}
 									className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition"

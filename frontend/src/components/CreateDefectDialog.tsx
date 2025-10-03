@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/store/auth'
-import { api } from '@/lib/api'
+import { api, getProjectsForSelect } from '@/lib/api'
 import { useToast } from './Toast'
 
 type Project = { id: string; name: string }
@@ -34,7 +34,7 @@ export function CreateDefectDialog({
 
 	useEffect(() => {
 		if (!open || !token) return
-		api<Project[]>('/api/projects', 'GET', undefined, token)
+		getProjectsForSelect()
 			.then(setProjects)
 			.catch(() => show('Не удалось загрузить проекты'))
 	}, [open, token])

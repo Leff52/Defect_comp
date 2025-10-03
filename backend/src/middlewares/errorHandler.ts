@@ -18,7 +18,7 @@ export function errorHandler(err: any, _req: Request, res: Response, _next: Next
 	
 	const status = err.status || (err.code === 'ENOENT' ? 404 : 500);
 	res.status(status).json({
-		error: err.message || 'Internal Server Error',
+		error: err.message || 'Внутренняя ошибка сервера',
 		code: err.code || undefined,
-	});
+	})
 }

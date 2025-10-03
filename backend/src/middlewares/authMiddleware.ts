@@ -9,13 +9,15 @@ export function authMiddleware(
 ) {
 	const header = req.header('Authorization')
 	if (!header?.startsWith('Bearer ')) {
-		return res.status(401).json({ error: 'Missing or invalid token' })
+		return res
+			.status(401)
+			.json({ error: 'Отсутствует или недействительный токен' })
 	}
 	try {
 		const payload = AuthService.verify(header.substring(7))
 		req.user = payload as any
 		next()
 	} catch {
-		return res.status(401).json({ error: 'Invalid or expired token' })
+		return res.status(401).json({ error: 'Недействительный или истекший токен' })
 	}
 }

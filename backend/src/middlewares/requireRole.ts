@@ -8,7 +8,7 @@ export function requireRole(
 		if (roles.some(r => allowed.includes(r as any))) return next()
 		return res
 			.status(403)
-			.json({ error: `Forbidden: requires role ${allowed.join(' or ')}` })
+			.json({ error: `Forbidden: требует роль ${allowed.join(' или ')}` })
 	}
 }
 const statusRoleMap: Record<
@@ -26,13 +26,13 @@ export function requireRoleForStatus() {
 		const target = String(req.body?.status ?? '').trim()
 		const allowed = statusRoleMap[target]
 		if (!allowed)
-			return res.status(400).json({ error: 'Unknown or disallowed status' })
+			return res.status(400).json({ error: 'Неизвестный или недопустимый статус' })
 
 		const roles: string[] = (req as any).user?.roles ?? []
 		if (roles.some(r => allowed.includes(r as any))) return next()
 
 		return res
 			.status(403)
-			.json({ error: `Forbidden: ${target} requires ${allowed.join(' or ')}` })
+			.json({ error: `Forbidden: ${target} требует ${allowed.join(' или ')}` })
 	}
 }

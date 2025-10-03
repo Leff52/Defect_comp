@@ -78,11 +78,11 @@ export class AttachmentController {
 		try {
 			const { id } = ParamId.parse(req.params)
 			const row = await this.service.getById(id)
-			if (!row) return res.status(404).json({ error: 'Attachment not found' })
+			if (!row) return res.status(404).json({ error: 'Вложение не найдено' })
 
 		const rel = row.url_or_path.replace(/^\//,'')
 		const abs = path.resolve(process.cwd(), rel)
-		if (!fs.existsSync(abs)) return res.status(404).json({ error: 'File not found on disk' })
+		if (!fs.existsSync(abs)) return res.status(404).json({ error: 'Файл не найден на диске' })
 
 		const rawName = row.file_name || path.basename(abs)
 		const filename = tryFixMojibake(rawName)

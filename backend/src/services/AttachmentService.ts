@@ -40,7 +40,7 @@ export class AttachmentService {
 
 	async getById(id: string) {
 		const row = await this.repo.findOne({ where: { id } })
-		if (!row) throw NotFound('Attachment not found')
+		if (!row) throw NotFound('Вложение не найдено')
 		return row
 	}
 

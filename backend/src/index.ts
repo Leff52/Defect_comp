@@ -1,6 +1,7 @@
 import express from 'express'; 
 import cors from 'cors';
 import path from 'path'
+import me from './routes/me.routes'
 import { config } from './config/config'; 
 import { AppDataSource } from './config/data-source';
 import { errorHandler } from './middlewares/errorHandler'; 
@@ -13,10 +14,12 @@ import comments from './routes/comments.routes'
 import attachments from './routes/attachments.routes'
 import { setupSwagger } from './config/swagger'
 
+
 const app = express(); 
 
 app.use(cors({ origin: 'http://localhost:3000', credentials: false }))
 app.use(express.json());
+app.use('/api', me)
 app.use('/api', health); 
 app.use('/api', defects); 
 AppDataSource.initialize().then(() => { app.listen(config.port, () => 
