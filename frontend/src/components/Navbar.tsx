@@ -40,6 +40,12 @@ export function Navbar() {
 							>
 								Проекты
 							</Link>
+							<Link 
+								href="/stats" 
+								className="text-gray-600 hover:text-gray-900 font-medium transition"
+							>
+								Статистика
+							</Link>
 						</nav>
 					</div>
 					
