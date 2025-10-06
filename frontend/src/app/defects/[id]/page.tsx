@@ -72,12 +72,16 @@ const getPriorityColor = (priority: Priority) => {
 
 export default function DefectDetails() {
   const { id } = useParams<{ id: string }>();
-  const { token, hydrated } = useAuth();
+  const { token, hydrated, user } = useAuth();
 
   const [defect, setDefect] = useState<Defect | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [text, setText] = useState('');
+  const [deletingAttachment, setDeletingAttachment] = useState<string | null>(null);
+
+  const userRoles = user?.roles || [];
+  const canDeleteAttachments = !userRoles.includes('Engineer');
 
   const refresh = async () => {
     if (!id) return;
@@ -116,6 +120,23 @@ export default function DefectDetails() {
       URL.revokeObjectURL(url)
     } catch (e) {
       console.error(e) 
+    }
+  }
+
+  async function handleDeleteAttachment(attachmentId: string, fileName: string) {
+    if (!token) return;
+    if (!confirm(`Вы уверены, что хотите удалить файл "${fileName}"?`)) return;
+
+    setDeletingAttachment(attachmentId);
+
+    try {
+      await api(`/api/attachments/${attachmentId}`, 'DELETE', undefined, token);
+      await refresh(); // обновлю список файлов
+    } catch (error: any) {
+      console.error('Error deleting attachment:', error);
+      alert(error.message || 'Ошибка при удалении файла');
+    } finally {
+      setDeletingAttachment(null);
     }
   }
 
@@ -263,12 +284,23 @@ export default function DefectDetails() {
                       </div>
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleDownload(a)}
-                    className="px-3 py-1 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition"
-                  >
-                    Скачать
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleDownload(a)}
+                      className="px-3 py-1 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition"
+                    >
+                      Скачать
+                    </button>
+                    {canDeleteAttachments && (
+                      <button
+                        onClick={() => handleDeleteAttachment(a.id, a.file_name)}
+                        disabled={deletingAttachment === a.id}
+                        className="px-3 py-1 text-sm text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {deletingAttachment === a.id ? 'Удаление...' : 'Удалить'}
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
               {attachments.length === 0 && (

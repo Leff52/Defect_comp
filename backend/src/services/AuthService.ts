@@ -5,7 +5,7 @@ export type JwtPayload = { id: string; roles: string[] };
 
 export class AuthService {
   static sign(payload: JwtPayload): string {
-    return jwt.sign(payload, config.jwtSecret, { expiresIn: config.jwtExpires });
+    return jwt.sign(payload, config.jwtSecret, { expiresIn: config.jwtExpires as any });
   }
 
   static verify(token: string): JwtPayload {
