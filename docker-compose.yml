@@ -1,0 +1,81 @@
+services:
+  db:
+    image: postgres:15
+    container_name: defect_db
+    environment:
+      POSTGRES_USER: devuser
+      POSTGRES_PASSWORD: StrongPass123
+      POSTGRES_DB: defect_db
+      TZ: Europe/Riga
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/db-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U devuser -d defect_db"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  seed:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: defect_seed
+    command: ["node", "seed/seed.js"]
+    environment:
+      DB_URL: postgres://devuser:StrongPass123@db:5432/defect_db
+      NODE_ENV: production
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: defect_backend
+    environment:
+      DB_URL: postgres://devuser:StrongPass123@db:5432/defect_db
+      PORT: 4000
+      JWT_SECRET: some_long_secret_here
+      JWT_EXPIRES: 3h
+      NODE_ENV: production
+      DB_SYNC: "false"
+    depends_on:
+      db:
+        condition: service_healthy
+      seed:
+        condition: service_completed_successfully
+    ports:
+      - "4000:4000"
+    command: ["npm", "run", "dev"]
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: defect_frontend
+    environment:
+      NEXT_PUBLIC_API_URL: "http://localhost:4000"
+      NODE_ENV: production
+    depends_on:
+      backend:
+        condition: service_started
+    ports:
+      - "3000:3000"
+
+  adminer:
+    image: adminer
+    container_name: defect_adminer
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+
+volumes:
+  pgdata:

@@ -15,6 +15,6 @@ export const AppDataSource = new DataSource({
 	url: config.dbUrl,
 	schema: 'app',
 	entities: [Defect, User, Role, UserRole, Project, Stage, Comment, Attachment],
-	synchronize: false,
+	synchronize: process.env.DB_SYNC === 'true',
 	logging: false,
 })
