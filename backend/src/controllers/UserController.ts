@@ -29,6 +29,10 @@ export class UserController {
 				return res.status(403).json({ error: 'Lead cannot create Admin or Lead users' })
 			}
 
+			if (roles.includes('Admin')) {
+				return res.status(403).json({ error: 'Cannot create users with Admin role' })
+			}
+
 			const newUser = await this.userService.createUser(email, password, fullName, roles)
 			const userRoles = await this.userService.getRolesForUser(newUser.id)
 
@@ -106,6 +110,11 @@ export class UserController {
 			// Lead не может удалять других Lead
 			if (isLead && !isAdmin && userToDeleteRoles.includes('Lead')) {
 				return res.status(403).json({ error: 'Lead cannot delete other Lead users' })
+			}
+
+			// Никто не может удалять пользователей с ролью Admin
+			if (userToDeleteRoles.includes('Admin')) {
+				return res.status(403).json({ error: 'Cannot delete users with Admin role' })
 			}
 
 			const success = await this.userService.deleteUser(id)
