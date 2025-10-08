@@ -39,7 +39,7 @@ r.delete(
 r.patch(
 	'/defects/:id/status',
 	authMiddleware,
-	requireRoles(['Admin','Manager']),
+	requireRoles(['Admin','Manager','Lead','Engineer']),
 	ctrl.changeStatus
 )
 

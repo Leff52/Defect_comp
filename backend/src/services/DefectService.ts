@@ -103,7 +103,7 @@ export class DefectService {
 	) {
 		// Нормализуем роли в массив как в AuthController
 		const roles = Array.isArray(userRoles) ? userRoles : [userRoles].filter(Boolean);
-		const allowed = ['Admin', 'Manager'];
+		const allowed = ['Admin', 'Manager', 'Lead','Engineer'];
 		
 		if (!roles.some(r => allowed.includes(r))) {
 			throw Forbidden('Изменить статус может только администратор/менеджер')

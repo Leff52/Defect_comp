@@ -100,7 +100,6 @@ export async function apiForm<T>(
 	return res.json() as Promise<T>
 }
 
-// lib/api.ts — вместо старого apiBlob верни и blob, и filename
 export async function apiBlobWithName(
 	path: string,
 	token?: string | null
